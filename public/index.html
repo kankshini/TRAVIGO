@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRAVIGO - Smart Travel Itinerary Generator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script>
+        // Simple React-like app without external dependencies for quick setup
+        // In production, use actual React + Tailwind CSS
+        
+        class TravelApp {
+            constructor() {
+                this.itinerary = null;
+                this.isLoading = false;
+                this.init();
+            }
+
+            init() {
+                this.render();
+                this.attachEventListeners();
+            }
+
+            attachEventListeners() {
+                document.getElementById('generateBtn')?.addEventListener('click', () => this.generateItinerary());
+                document.getElementById('destination')?.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.generateItinerary();
+                });
+            }
+
+            async generateItinerary() {
+                const destination = document.getElementById('destination')?.value;
+                const budget = parseFloat(document.getElementById('budget')?.value);
+                const duration = parseInt(document.getElementById('duration')?.value);
+
+                if (!destination || !budget || !duration) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+
+                if (budget <= 0 || duration <= 0) {
+                    alert('Budget and duration must be positive');
+                    return;
+                }
+
+                this.isLoading = true;
+                this.render();
+
+                try {
+                    const response = await fetch('/api/generate-itinerary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ destination, budget, duration })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        alert('Error: ' + error.error);
+                        return;
+                    }
+
+                    this.itinerary = await response.json();
+                    this.render();
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to generate itinerary');
+                } finally {
+                    this.isLoading = false;
+                }
+            }
+
+            render() {
+                const root = document.getElementById('root');
+                root.innerHTML = this.itinerary ? this.renderItinerary() : this.renderForm();
+            }
+
+            renderForm() {
+                return `
+                    <div class="container">
+                        <header>
+                            <h1>🌍 TRAVIGO</h1>
+                            <p>Smart Travel Itinerary Generator</p>
+                        </header>
+                        
+                        <main>
+                            <div class="form-section">
+                                <h2>Plan Your Adventure</h2>
+                                <div class="form-group">
+                                    <label for="destination">Destination</label>
+                                    <input type="text" id="destination" placeholder="Enter destination (e.g., Paris, Bangkok)" />
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="budget">Budget ($)</label>
+                                        <input type="number" id="budget" placeholder="2000" min="100" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="duration">Duration (days)</label>
+                                        <input type="number" id="duration" placeholder="7" min="1" max="30" />
+                                    </div>
+                                </div>
+                                
+                                <button id="generateBtn" class="btn-primary" ${this.isLoading ? 'disabled' : ''}>
+                                    ${this.isLoading ? 'Generating...' : 'Generate Itinerary'}
+                                </button>
+                            </div>
+
+                            <div class="info-section">
+                                <h3>How it works</h3>
+                                <ul>
+                                    <li>✈️ Enter your destination, budget, and trip duration</li>
+                                    <li>💰 We automatically allocate your budget for accommodation, meals, and activities</li>
+                                    <li>📅 Get a detailed day-by-day itinerary optimized for your budget</li>
+                                    <li>🎯 Discover curated activities and local experiences</li>
+                                </ul>
+                            </div>
+                        </main>
+
+                        <footer>
+                            <p>&copy; 2025 TRAVIGO. All rights reserved.</p>
+                        </footer>
+                    </div>
+                `;
+            }
+
+            renderItinerary() {
+                const { destination, duration, totalBudget, budgetBreakdown, itinerary } = this.itinerary;
+                
+                return `
+                    <div class="container">
+                        <header>
+                            <h1>🌍 TRAVIGO</h1>
+                            <p>Your ${duration}-Day Adventure in ${destination}</p>
+                        </header>
+
+                        <main>
+                            <div class="itinerary-header">
+                                <button class="btn-secondary" onclick="location.reload()">← New Search</button>
+                                <h2>${destination} Itinerary</h2>
+                            </div>
+
+                            <div class="budget-summary">
+                                <h3>Budget Breakdown</h3>
+                                <div class="budget-grid">
+                                    <div class="budget-item">
+                                        <span>Total Budget</span>
+                                        <strong>$${totalBudget.toFixed(2)}</strong>
+                                    </div>
+                                    <div class="budget-item">
+                                        <span>Accommodation</span>
+                                        <strong>$${budgetBreakdown.accommodation.toFixed(2)}</strong>
+                                    </div>
+                                    <div class="budget-item">
+                                        <span>Meals</span>
+                                        <strong>$${budgetBreakdown.meals.toFixed(2)}</strong>
+                                    </div>
+                                    <div class="budget-item">
+                                        <span>Activities</span>
+                                        <strong>$${budgetBreakdown.activities.toFixed(2)}</strong>
+                                    </div>
+                                    <div class="budget-item">
+                                        <span>Transport</span>
+                                        <strong>$${budgetBreakdown.transport.toFixed(2)}</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="itinerary-days">
+                                ${itinerary.map(day => this.renderDay(day)).join('')}
+                            </div>
+                        </main>
+
+                        <footer>
+                            <p>&copy; 2025 TRAVIGO. Have a great trip! ✈️</p>
+                        </footer>
+                    </div>
+                `;
+            }
+
+            renderDay(day) {
+                return `
+                    <div class="day-card">
+                        <h3>${day.title}</h3>
+                        <div class="day-content">
+                            <div class="activity">
+                                <strong>🌅 Morning:</strong> ${day.morning}
+                            </div>
+                            <div class="activity">
+                                <strong>☀️ Afternoon:</strong> ${day.afternoon}
+                            </div>
+                            <div class="activity">
+                                <strong>🌆 Evening:</strong> ${day.evening}
+                            </div>
+                            <div class="meals">
+                                <strong>🍽️ Meals:</strong>
+                                <ul>
+                                    <li>${day.meals.breakfast}</li>
+                                    <li>${day.meals.lunch}</li>
+                                    <li>${day.meals.dinner}</li>
+                                </ul>
+                            </div>
+                            <div class="accommodation">
+                                <strong>🏨 Stay:</strong> ${day.accommodation}
+                            </div>
+                            <div class="cost">
+                                <strong>💰 Estimated Cost:</strong> $${day.estimatedCost.toFixed(2)}
+                            </div>
+                            <div class="tip">
+                                <strong>💡 Tip:</strong> ${day.tips}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize app when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new TravelApp();
+        });
+    </script>
+</body>
+</html>
