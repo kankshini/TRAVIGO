@@ -200,9 +200,8 @@ Found a bug? Please create an issue on GitHub with:
 
 ## 📧 Contact & Support
 
-- **Email**: your.email@example.com
-- **GitHub**: [@yourusername](https://github.com/yourusername)
-- **Twitter**: [@yourtwitter](https://twitter.com/yourtwitter)
+- **Email**: kankshinideotale@gmail.com
+- **GitHub**: https://github.com/kankshini
 
 ## 🙏 Acknowledgments
 
