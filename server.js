@@ -12,7 +12,7 @@ app.use(express.static('public'));
 // API endpoint to generate itinerary
 app.post('/api/generate-itinerary', (req, res) => {
   try {
-    const { destination, budget, duration } = req.body;
+    const { destination, budget, duration, tripType } = req.body;
 
     // Validate input
     if (!destination || !budget || !duration) {
@@ -34,7 +34,7 @@ app.post('/api/generate-itinerary', (req, res) => {
     }
 
     // Generate itinerary
-    const generator = new ItineraryGenerator(destination, budget, duration);
+    const generator = new ItineraryGenerator(destination, budget, duration, tripType || 'all');
     const itinerary = generator.generate();
 
     res.json(itinerary);
