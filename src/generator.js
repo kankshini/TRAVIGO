@@ -2,11 +2,12 @@
 // Generates day-wise travel itineraries based on budget and duration
 
 class ItineraryGenerator {
-  constructor(destination, budget, duration, activities = []) {
+  constructor(destination, budget, duration, tripType = 'all', activities = []) {
     this.destination = destination;
     this.budget = budget; // in currency units
     this.duration = duration; // in days
-    this.activities = activities; // activity database
+    this.tripType = tripType; // 'family' | 'friends' | 'couple' | 'all'
+    this.activities = activities; // optional activity database override
   }
 
   // Activity database with estimated costs
@@ -22,16 +23,16 @@ class ItineraryGenerator {
       luxury: { cost: 100, name: 'Fine Dining' }
     },
     activities: [
-      { name: 'Museum', cost: 20, duration: 3 },
-      { name: 'Hiking/Nature Trail', cost: 0, duration: 4 },
-      { name: 'City Tour', cost: 50, duration: 4 },
-      { name: 'Food Tour', cost: 60, duration: 3 },
-      { name: 'Local Market Visit', cost: 0, duration: 2 },
-      { name: 'Beachside Relaxation', cost: 0, duration: 4 },
-      { name: 'Adventure Sports', cost: 100, duration: 3 },
-      { name: 'Cultural Festival', cost: 25, duration: 5 },
-      { name: 'Photography Walk', cost: 0, duration: 3 },
-      { name: 'Spa & Wellness', cost: 80, duration: 2 }
+      { name: 'Museum', cost: 20, duration: 3, suitableFor: ['family', 'couple', 'friends', 'all'] },
+      { name: 'Hiking/Nature Trail', cost: 0, duration: 4, suitableFor: ['friends', 'family', 'all'] },
+      { name: 'City Tour', cost: 50, duration: 4, suitableFor: ['family', 'friends', 'couple', 'all'] },
+      { name: 'Food Tour', cost: 60, duration: 3, suitableFor: ['friends', 'couple', 'all'] },
+      { name: 'Local Market Visit', cost: 0, duration: 2, suitableFor: ['family', 'friends', 'all'] },
+      { name: 'Beachside Relaxation', cost: 0, duration: 4, suitableFor: ['couple', 'family', 'all'] },
+      { name: 'Adventure Sports', cost: 100, duration: 3, suitableFor: ['friends', 'all'] },
+      { name: 'Cultural Festival', cost: 25, duration: 5, suitableFor: ['family', 'friends', 'couple', 'all'] },
+      { name: 'Photography Walk', cost: 0, duration: 3, suitableFor: ['couple', 'friends', 'all'] },
+      { name: 'Spa & Wellness', cost: 80, duration: 2, suitableFor: ['couple', 'all'] }
     ],
     transport: {
       daily: { cost: 20, name: 'Local Transport' },
@@ -43,7 +44,7 @@ class ItineraryGenerator {
   getAccommodationTier() {
     const perDay = this.budget / this.duration;
     if (perDay < 50) return 'budget';
-    if (perDay < 150) return 'mid';
+    if (perDay < 250) return 'mid';
     return 'luxury';
   }
 
@@ -51,7 +52,7 @@ class ItineraryGenerator {
   getMealTier() {
     const perDay = this.budget / this.duration;
     if (perDay < 50) return 'budget';
-    if (perDay < 150) return 'mid';
+    if (perDay < 250) return 'mid';
     return 'luxury';
   }
 
@@ -62,19 +63,26 @@ class ItineraryGenerator {
     
     const accommodation = ItineraryGenerator.DEFAULT_ACTIVITIES.accommodation[tier];
     const meals = ItineraryGenerator.DEFAULT_ACTIVITIES.meals[mealTier];
-    
-    const dailyCost = (accommodation.cost + meals.cost * 2) * this.duration;
+    const transportDaily = ItineraryGenerator.DEFAULT_ACTIVITIES.transport.daily.cost;
+
+    const dailyCost = (accommodation.cost + meals.cost * 2 + transportDaily) * this.duration;
     return Math.max(0, this.budget - dailyCost);
   }
 
   // Select activities within budget constraints
   selectActivities(activityBudget) {
-    const activities = ItineraryGenerator.DEFAULT_ACTIVITIES.activities;
+    const activities = this.activities.length ? this.activities : ItineraryGenerator.DEFAULT_ACTIVITIES.activities;
     const selected = [];
     let spent = 0;
 
-    // Sort activities by cost-efficiency
-    const sorted = [...activities].sort((a, b) => a.cost - b.cost);
+    // Filter by trip type suitability
+    const filtered = activities.filter(a => {
+      if (!a.suitableFor) return true;
+      return a.suitableFor.includes(this.tripType) || a.suitableFor.includes('all');
+    });
+
+    // Sort activities by cost (cheapest first)
+    const sorted = [...filtered].sort((a, b) => a.cost - b.cost);
 
     for (const activity of sorted) {
       if (spent + activity.cost <= activityBudget) {
@@ -121,12 +129,46 @@ class ItineraryGenerator {
       destination: this.destination,
       duration: this.duration,
       totalBudget: this.budget,
-      budgetBreakdown: {
-        accommodation: accommodation.cost * this.duration,
-        meals: meals.cost * 2 * this.duration,
-        activities: activityBudget,
-        transport: 20 * this.duration
-      },
+      budgetBreakdown: (function() {
+        // Compose breakdown and ensure it does not exceed total budget by reducing transport/meals/accommodation
+        let accommodationTotal = accommodation.cost * this.duration;
+        let mealsTotal = meals.cost * 2 * this.duration;
+        let transportTotal = ItineraryGenerator.DEFAULT_ACTIVITIES.transport.daily.cost * this.duration;
+        let activitiesTotal = activityBudget;
+
+        let sum = accommodationTotal + mealsTotal + activitiesTotal + transportTotal;
+        if (sum > this.budget) {
+          let over = sum - this.budget;
+          // reduce transport first
+          const reduceTransport = Math.min(over, transportTotal);
+          transportTotal -= reduceTransport;
+          over -= reduceTransport;
+          // then reduce meals
+          if (over > 0) {
+            const reduceMeals = Math.min(over, mealsTotal);
+            mealsTotal -= reduceMeals;
+            over -= reduceMeals;
+          }
+          // then reduce accommodation
+          if (over > 0) {
+            const reduceAcc = Math.min(over, accommodationTotal);
+            accommodationTotal -= reduceAcc;
+            over -= reduceAcc;
+          }
+          // if still over, set activities to 0 (already likely)
+          if (over > 0) {
+            activitiesTotal = Math.max(0, activitiesTotal - over);
+            over = 0;
+          }
+        }
+
+        return {
+          accommodation: accommodationTotal,
+          meals: mealsTotal,
+          activities: activitiesTotal,
+          transport: transportTotal
+        };
+      }).call(this),
       itinerary: itinerary
     };
   }

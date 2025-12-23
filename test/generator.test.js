@@ -5,7 +5,7 @@ describe('ItineraryGenerator', function() {
   let generator;
 
   beforeEach(function() {
-    generator = new ItineraryGenerator('Paris', 2000, 5);
+    generator = new ItineraryGenerator('Paris', 2000, 5, 'friends');
   });
 
   describe('Budget Allocation', function() {
@@ -52,18 +52,31 @@ describe('ItineraryGenerator', function() {
 
   describe('Accommodation Tier', function() {
     it('should select budget tier for low budget', function() {
-      const lowBudgetGen = new ItineraryGenerator('Bangkok', 300, 7);
+      const lowBudgetGen = new ItineraryGenerator('Bangkok', 300, 7, 'family');
       assert.strictEqual(lowBudgetGen.getAccommodationTier(), 'budget');
     });
 
     it('should select mid tier for medium budget', function() {
-      const midBudgetGen = new ItineraryGenerator('Bangkok', 1500, 7);
+      const midBudgetGen = new ItineraryGenerator('Bangkok', 1500, 7, 'friends');
       assert.strictEqual(midBudgetGen.getAccommodationTier(), 'mid');
     });
 
     it('should select luxury tier for high budget', function() {
-      const luxuryGen = new ItineraryGenerator('Bangkok', 3500, 7);
+      const luxuryGen = new ItineraryGenerator('Bangkok', 3500, 7, 'couple');
       assert.strictEqual(luxuryGen.getAccommodationTier(), 'luxury');
+    });
+  });
+
+  describe('Activity Suitability', function() {
+    it('should select activities appropriate for trip type', function() {
+      const familyGen = new ItineraryGenerator('Rome', 1000, 4, 'family');
+      const activityBudget = familyGen.calculateActivityBudget();
+      const selected = familyGen.selectActivities(activityBudget);
+      assert(selected.length > 0, 'Should select at least one activity');
+      selected.forEach(a => {
+        assert(a.suitableFor && (a.suitableFor.includes('family') || a.suitableFor.includes('all')),
+          `Activity ${a.name} should be suitable for family trips`);
+      });
     });
   });
 });
