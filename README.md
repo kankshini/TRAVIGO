@@ -2,8 +2,13 @@
 
 Generate intelligent, budget-optimized day-wise travel itineraries effortlessly!
 
+## � Live Demo
+
+**🚀 Try TRAVIGO now!** 👉 https://travigo-six.vercel.app
+
 ## 🌟 Features
 
+- **🤖 AI-Powered** - Uses Google Gemini AI for intelligent itinerary generation
 - **Smart Budget Allocation** - Automatically distributes your budget across accommodation, meals, activities, and transport
 - **Day-wise Itineraries** - Get detailed plans for each day of your trip
 - **Activity Recommendations** - Curated activities based on your budget tier
@@ -21,8 +26,8 @@ Generate intelligent, budget-optimized day-wise travel itineraries effortlessly!
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/travigo.git
-   cd travigo
+   git clone https://github.com/kankshini/TRAVIGO.git
+   cd TRAVIGO
    ```
 
 2. **Install dependencies**
