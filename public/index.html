@@ -1,605 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAVIGO - AI-Powered Travel Itinerary Generator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .gradient-text { background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .float { animation: float 3s ease-in-out infinite; }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TRAVIGO — AI Travel Planner</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 95%;
+      max-width: 900px;
+      background: #0b1220;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      text-align: center;
+      opacity: 0.8;
+      margin-bottom: 25px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: #1e293b;
+      color: #fff;
+      outline: none;
+    }
+
+    button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #4f46e5, #06b6d4);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover { opacity: 0.9; }
+
+    .result {
+      margin-top: 25px;
+      background: #020617;
+      padding: 20px;
+      border-radius: 10px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .footer {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    @media(max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
-<body class="bg-gray-50">
-    <div id="root"></div>
-    
-    <script>
-        class TravelApp {
-            constructor() {
-                this.itinerary = null;
-                this.isLoading = false;
-                this.init();
-            }
 
-            init() {
-                this.render();
-                this.attachEventListeners();
-            }
+<body>
+  <div class="container">
+    <h1>🌍 TRAVIGO</h1>
+    <div class="subtitle">AI-Powered Smart Travel Planner</div>
 
-            attachEventListeners() {
-                document.getElementById('generateBtn')?.addEventListener('click', () => this.generateItinerary());
-                document.getElementById('destination')?.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.generateItinerary();
-                });
-                document.getElementById('resetBtn')?.addEventListener('click', () => this.resetItinerary());
-            }
+    <div class="grid">
+      <input id="destination" placeholder="Destination (Paris, Tokyo...)" />
+      <input id="budget" placeholder="Budget (USD)" type="number" />
+      <input id="days" placeholder="Number of Days" type="number" />
+      <input id="travelers" placeholder="Travelers" type="number" />
+    </div>
 
-            async generateItinerary() {
-                const destination = document.getElementById('destination')?.value?.trim();
-                const budget = parseFloat(document.getElementById('budget')?.value);
-                const days = parseInt(document.getElementById('days')?.value);
-                const travelers = parseInt(document.getElementById('travelers')?.value) || 1;
-                const tripType = document.getElementById('tripType')?.value || 'general tourism';
+    <button onclick="generate()">Generate AI Itinerary</button>
 
-                if (!destination || !budget || !days) {
-                    this.showError('Please fill in all required fields');
-                    return;
-                }
+    <div id="result" class="result" style="display:none;"></div>
 
-                if (budget <= 0 || days <= 0 || days > 30) {
-                    this.showError('Please enter valid trip details');
-                    return;
-                }
+    <div class="footer">Powered by Gemini AI • TRAVIGO</div>
+  </div>
 
-                this.isLoading = true;
-                this.render();
+<script>
+async function generate() {
+  const destination = document.getElementById("destination").value;
+  const budget = document.getElementById("budget").value;
+  const days = document.getElementById("days").value;
+  const travelers = document.getElementById("travelers").value;
 
-                try {
-                    const response = await fetch('/api/generate-itinerary', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ destination, budget, days, travelers, tripType })
-                    });
+  const resultBox = document.getElementById("result");
+  resultBox.style.display = "block";
+  resultBox.innerHTML = "Generating AI itinerary... ✨";
 
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error || 'Failed to generate itinerary');
-                    }
+  const res = await fetch("/api/generate-itinerary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination, budget, days, travelers })
+  });
 
-                    this.itinerary = await response.json();
-                    this.isLoading = false;
-                    this.render();
-                } catch (error) {
-                    console.error('Error:', error);
-                    this.showError(error.message || 'Failed to generate itinerary');
-                    this.isLoading = false;
-                }
-            }
-
-            resetItinerary() {
-                this.itinerary = null;
-                this.render();
-                document.getElementById('destination')?.focus();
-            }
-
-            showError(message) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'fixed bottom-6 right-6 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm animate-bounce z-50';
-                errorDiv.textContent = message;
-                document.body.appendChild(errorDiv);
-                setTimeout(() => errorDiv.remove(), 4000);
-            }
-
-            render() {
-                const root = document.getElementById('root');
-                root.innerHTML = this.itinerary ? this.renderItinerary() : this.renderForm();
-                this.attachEventListeners();
-            }
-
-            renderForm() {
-                return `
-                    <div class="fade-in">
-                        <!-- Navbar -->
-                        <nav class="bg-white shadow-md sticky top-0 z-40">
-                            <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                                <div class="text-2xl font-bold gradient-text">✈️ TRAVIGO</div>
-                                <div class="text-gray-600 text-sm">AI-Powered Travel Planning</div>
-                            </div>
-                        </nav>
-
-                        <!-- Hero Section -->
-                        <section class="gradient-bg text-white py-20 px-6">
-                            <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-                                <div>
-                                    <h1 class="text-5xl font-bold mb-4 leading-tight">Plan Your Perfect Trip</h1>
-                                    <p class="text-lg text-purple-100 mb-8">Generate intelligent, budget-optimized travel itineraries powered by Google Gemini AI</p>
-                                    <div class="space-y-3">
-                                        <div class="flex items-center gap-3">✨ Personalized Plans</div>
-                                        <div class="flex items-center gap-3">💰 Smart Budget Allocation</div>
-                                        <div class="flex items-center gap-3">🌍 Expert Recommendations</div>
-                                    </div>
-                                </div>
-                                <div class="flex justify-center">
-                                    <div class="text-9xl float">🌍</div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Form Section -->
-                        <section class="py-20 px-6">
-                            <div class="max-w-2xl mx-auto">
-                                <div class="bg-white rounded-2xl shadow-2xl p-10">
-                                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Let's Plan Your Adventure</h2>
-                                    <p class="text-gray-600 mb-8">Tell us about your trip preferences</p>
-
-                                    <form class="space-y-6">
-                                        <div class="grid md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">📍 Destination</label>
-                                                <input type="text" id="destination" placeholder="Paris, Tokyo, Dubai..." class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none transition" required/>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">💵 Budget (USD)</label>
-                                                <input type="number" id="budget" placeholder="2000" min="1" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none transition" required/>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">📅 Number of Days</label>
-                                                <input type="number" id="days" placeholder="5" min="1" max="30" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none transition" required/>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-semibold text-gray-700 mb-2">👥 Travelers</label>
-                                                <input type="number" id="travelers" placeholder="1" min="1" value="1" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none transition"/>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label class="block text-sm font-semibold text-gray-700 mb-2">🎯 Trip Type</label>
-                                            <select id="tripType" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none transition">
-                                                <option value="general tourism">General Tourism</option>
-                                                <option value="adventure">Adventure</option>
-                                                <option value="luxury">Luxury</option>
-                                                <option value="budget">Budget</option>
-                                                <option value="cultural">Cultural</option>
-                                                <option value="beach">Beach & Relaxation</option>
-                                                <option value="food tour">Food Tour</option>
-                                                <option value="wildlife">Wildlife</option>
-                                            </select>
-                                        </div>
-
-                                        <button type="button" id="generateBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg hover:scale-105 transition transform duration-200">
-                                            ✨ Generate Itinerary
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Footer -->
-                        <footer class="bg-white border-t border-gray-200 py-8 px-6 text-center text-gray-600">
-                            <p>🚀 Powered by Google Gemini AI | Make every trip unforgettable</p>
-                        </footer>
-                    </div>
-                `;
-            }
-
-            renderItinerary() {
-                const data = this.itinerary;
-                return `
-                    <div class="fade-in">
-                        <!-- Navbar -->
-                        <nav class="bg-white shadow-md sticky top-0 z-40">
-                            <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                                <div class="text-2xl font-bold gradient-text">✈️ TRAVIGO</div>
-                                <div class="text-gray-600 text-sm">Your Custom Itinerary</div>
-                            </div>
-                        </nav>
-
-                        <!-- Header -->
-                        <section class="bg-white border-b border-gray-200">
-                            <div class="max-w-7xl mx-auto px-6 py-8">
-                                <button id="resetBtn" class="mb-6 px-6 py-2 border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition">← Plan Another Trip</button>
-                                
-                                <div class="grid md:grid-cols-4 gap-6">
-                                    <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-600">
-                                        <p class="text-sm text-gray-600 uppercase font-semibold">Destination</p>
-                                        <p class="text-2xl font-bold text-indigo-600 mt-2">${data.destination}</p>
-                                    </div>
-                                    <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-600">
-                                        <p class="text-sm text-gray-600 uppercase font-semibold">Duration</p>
-                                        <p class="text-2xl font-bold text-indigo-600 mt-2">${data.days} Days</p>
-                                    </div>
-                                    <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-600">
-                                        <p class="text-sm text-gray-600 uppercase font-semibold">Budget</p>
-                                        <p class="text-2xl font-bold text-indigo-600 mt-2">$${data.budget}</p>
-                                    </div>
-                                    <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-600">
-                                        <p class="text-sm text-gray-600 uppercase font-semibold">Travelers</p>
-                                        <p class="text-2xl font-bold text-indigo-600 mt-2">${data.travelers}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Itinerary Content -->
-                        <section class="py-12 px-6 bg-gray-50">
-                            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-10">
-                                <h2 class="text-4xl font-bold text-gray-900 mb-2">Your ${data.destination} Itinerary</h2>
-                                <p class="text-gray-600 mb-8">Generated on ${new Date(data.generatedAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                
-                                <div class="prose prose-lg max-w-none text-gray-700 leading-relaxed">
-                                    ${this.formatItinerary(data.itinerary)}
-                                </div>
-
-                                <div class="mt-10 pt-8 border-t border-gray-200">
-                                    <button id="resetBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-lg hover:shadow-lg transition duration-200">
-                                        ✨ Plan Another Trip
-                                    </button>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Footer -->
-                        <footer class="bg-white border-t border-gray-200 py-8 px-6 text-center text-gray-600">
-                            <p>🚀 Powered by Google Gemini AI | Make every trip unforgettable</p>
-                        </footer>
-                    </div>
-                `;
-            }
-
-            formatItinerary(text) {
-                return text
-                    .split('\n')
-                    .map(line => {
-                        if (line.match(/^#+\s/)) {
-                            const level = line.match(/^#+/)[0].length;
-                            const title = line.replace(/^#+\s+/, '');
-                            const sizes = { 1: 'text-3xl', 2: 'text-2xl', 3: 'text-xl', 4: 'text-lg', 5: 'text-base', 6: 'text-sm' };
-                            return `<h${level} class="font-bold ${sizes[level] || 'text-lg'} text-indigo-600 mt-6 mb-3">${title}</h${level}>`;
-                        } else if (line.match(/^\s*[-*]\s/)) {
-                            const item = line.replace(/^\s*[-*]\s+/, '');
-                            return `<li class="ml-6 mb-2">${item}</li>`;
-                        } else if (line.match(/^\d+\.\s/)) {
-                            const item = line.replace(/^\d+\.\s+/, '');
-                            return `<li class="ml-6 mb-2">${item}</li>`;
-                        } else if (line.trim()) {
-                            return `<p class="mb-4">${line}</p>`;
-                        }
-                        return '';
-                    })
-                    .join('');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            new TravelApp();
-        });
-    </script>
-</body>
-</html>
-
-    
-    <script>
-        class TravelApp {
-            constructor() {
-                this.itinerary = null;
-                this.isLoading = false;
-                this.init();
-            }
-
-            init() {
-                this.render();
-                this.attachEventListeners();
-            }
-
-            attachEventListeners() {
-                document.getElementById('generateBtn')?.addEventListener('click', () => this.generateItinerary());
-                document.getElementById('destination')?.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.generateItinerary();
-                });
-                document.getElementById('resetBtn')?.addEventListener('click', () => this.resetItinerary());
-            }
-
-            async generateItinerary() {
-                const destination = document.getElementById('destination')?.value?.trim();
-                const budget = parseFloat(document.getElementById('budget')?.value);
-                const days = parseInt(document.getElementById('days')?.value);
-                const travelers = parseInt(document.getElementById('travelers')?.value) || 1;
-                const tripType = document.getElementById('tripType')?.value || 'general tourism';
-
-                // Validation
-                if (!destination || !budget || !days) {
-                    this.showError('Please fill in all required fields');
-                    return;
-                }
-
-                if (budget <= 0 || days <= 0) {
-                    this.showError('Budget and days must be positive numbers');
-                    return;
-                }
-
-                if (days > 30) {
-                    this.showError('Trip duration cannot exceed 30 days');
-                    return;
-                }
-
-                this.isLoading = true;
-                this.render();
-
-                try {
-                    const response = await fetch('/api/generate-itinerary', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ destination, budget, days, travelers, tripType })
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error || 'Failed to generate itinerary');
-                    }
-
-                    this.itinerary = await response.json();
-                    this.isLoading = false;
-                    this.render();
-                } catch (error) {
-                    console.error('Error:', error);
-                    this.showError(error.message || 'Failed to generate itinerary');
-                    this.isLoading = false;
-                }
-            }
-
-            resetItinerary() {
-                this.itinerary = null;
-                this.render();
-                document.getElementById('destination')?.focus();
-            }
-
-            showError(message) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error-toast';
-                errorDiv.textContent = message;
-                document.body.appendChild(errorDiv);
-                
-                setTimeout(() => {
-                    errorDiv.classList.add('show');
-                }, 10);
-                
-                setTimeout(() => {
-                    errorDiv.classList.remove('show');
-                    setTimeout(() => errorDiv.remove(), 300);
-                }, 4000);
-            }
-
-            render() {
-                const root = document.getElementById('root');
-                root.innerHTML = this.itinerary ? this.renderItinerary() : this.renderForm();
-                this.attachEventListeners();
-            }
-
-            renderForm() {
-                return `
-                    <div class="main-container">
-                        <!-- Navigation -->
-                        <nav class="navbar">
-                            <div class="navbar-content">
-                                <div class="logo">✈️ TRAVIGO</div>
-                                <div class="nav-links">
-                                    <span>AI-Powered Travel Planning</span>
-                                </div>
-                            </div>
-                        </nav>
-
-                        <!-- Hero Section -->
-                        <section class="hero">
-                            <div class="hero-content">
-                                <div class="hero-text">
-                                    <h1>Plan Your Perfect Trip</h1>
-                                    <p>Generate intelligent, budget-optimized travel itineraries powered by AI</p>
-                                    <div class="features-list">
-                                        <div class="feature-item">✨ Personalized Plans</div>
-                                        <div class="feature-item">💰 Smart Budget Allocation</div>
-                                        <div class="feature-item">🌍 Expert Recommendations</div>
-                                    </div>
-                                </div>
-                                <div class="hero-image">
-                                    <div class="globe-icon">🌍</div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Form Section -->
-                        <section class="form-section">
-                            <div class="form-container">
-                                <div class="form-header">
-                                    <h2>Let's Plan Your Adventure</h2>
-                                    <p>Tell us about your trip preferences</p>
-                                </div>
-
-                                <form class="travel-form">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label for="destination">
-                                                <span class="label-icon">📍</span>
-                                                Destination
-                                            </label>
-                                            <input 
-                                                type="text" 
-                                                id="destination" 
-                                                placeholder="Paris, Tokyo, Dubai..." 
-                                                required
-                                            />
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="budget">
-                                                <span class="label-icon">💵</span>
-                                                Budget (USD)
-                                            </label>
-                                            <input 
-                                                type="number" 
-                                                id="budget" 
-                                                placeholder="2000" 
-                                                min="1"
-                                                required
-                                            />
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="days">
-                                                <span class="label-icon">📅</span>
-                                                Number of Days
-                                            </label>
-                                            <input 
-                                                type="number" 
-                                                id="days" 
-                                                placeholder="5" 
-                                                min="1"
-                                                max="30"
-                                                required
-                                            />
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="travelers">
-                                                <span class="label-icon">👥</span>
-                                                Travelers
-                                            </label>
-                                            <input 
-                                                type="number" 
-                                                id="travelers" 
-                                                placeholder="1" 
-                                                min="1"
-                                                value="1"
-                                            />
-                                        </div>
-
-                                        <div class="form-group form-group-full">
-                                            <label for="tripType">
-                                                <span class="label-icon">🎯</span>
-                                                Trip Type
-                                            </label>
-                                            <select id="tripType">
-                                                <option value="general tourism">General Tourism</option>
-                                                <option value="adventure">Adventure</option>
-                                                <option value="luxury">Luxury</option>
-                                                <option value="budget">Budget</option>
-                                                <option value="cultural">Cultural</option>
-                                                <option value="beach">Beach & Relaxation</option>
-                                                <option value="food tour">Food Tour</option>
-                                                <option value="wildlife">Wildlife</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-actions">
-                                        <button type="button" id="generateBtn" class="btn btn-primary ${this.isLoading ? 'loading' : ''}">
-                                            ${this.isLoading ? '<span class="spinner"></span>Generating...' : '✨ Generate Itinerary'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </section>
-
-                        <!-- Footer -->
-                        <footer class="footer">
-                            <p>🚀 Powered by Google Gemini AI | Make every trip unforgettable</p>
-                        </footer>
-                    </div>
-                `;
-            }
-
-            renderItinerary() {
-                const data = this.itinerary;
-                return `
-                    <div class="main-container">
-                        <!-- Navigation -->
-                        <nav class="navbar">
-                            <div class="navbar-content">
-                                <div class="logo">✈️ TRAVIGO</div>
-                                <div class="nav-links">
-                                    <span>Your Custom Itinerary</span>
-                                </div>
-                            </div>
-                        </nav>
-
-                        <!-- Results Header -->
-                        <section class="results-header">
-                            <div class="results-container">
-                                <button id="resetBtn" class="btn btn-outline">← Plan Another Trip</button>
-                                <div class="trip-summary">
-                                    <div class="summary-item">
-                                        <span class="summary-label">Destination</span>
-                                        <span class="summary-value">${data.destination}</span>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span class="summary-label">Duration</span>
-                                        <span class="summary-value">${data.days} Days</span>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span class="summary-label">Budget</span>
-                                        <span class="summary-value">$${data.budget}</span>
-                                    </div>
-                                    <div class="summary-item">
-                                        <span class="summary-label">Travelers</span>
-                                        <span class="summary-value">${data.travelers}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Itinerary Content -->
-                        <section class="itinerary-section">
-                            <div class="itinerary-container">
-                                <div class="itinerary-header">
-                                    <h2>Your ${data.destination} Itinerary</h2>
-                                    <p class="generated-time">Generated on ${new Date(data.generatedAt).toLocaleDateString()}</p>
-                                </div>
-                                
-                                <div class="itinerary-content">
-                                    ${this.formatItinerary(data.itinerary)}
-                                </div>
-
-                                <div class="itinerary-actions">
-                                    <button id="resetBtn" class="btn btn-primary">✨ Plan Another Trip</button>
-                                </div>
-                            </div>
-                        </section>
-
-                        <!-- Footer -->
-                        <footer class="footer">
-                            <p>🚀 Powered by Google Gemini AI | Make every trip unforgettable</p>
-                        </footer>
-                    </div>
-                `;
-            }
-
-            formatItinerary(text) {
-                return text
-                    .split('\n\n')
-                    .map(paragraph => {
-                        if (paragraph.trim().startsWith('**')) {
-                            return `<h3>${paragraph.replace(/\*\*/g, '')}</h3>`;
-                        } else if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('* ')) {
-                            const items = paragraph.split('\n').map(line => line.replace(/^[-*]\s+/, '')).join('</li><li>');
-                            return `<ul><li>${items}</li></ul>`;
-                        } else if (paragraph.trim().match(/^#+\s/)) {
-                            const level = paragraph.match(/^#+/)[0].length;
-                            const title = paragraph.replace(/^#+\s+/, '');
-                            return `<h${level + 1}>${title}</h${level + 1}>`;
-                        } else {
-                            return `<p>${paragraph}</p>`;
-                        }
-                    })
-                    .join('');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            new TravelApp();
-        });
-    </script>
+  const data = await res.json();
+  resultBox.innerText = data.itinerary || "Failed to generate itinerary.";
+}
+</script>
 </body>
 </html>
